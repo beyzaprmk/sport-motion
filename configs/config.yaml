@@ -2,6 +2,7 @@ video:
   path: data/input/squat.mp4
 
 pose:
+  backend: ultralytics
   model: yolo26n-pose.pt
   confidence: 0.5
 

@@ -1,0 +1,13 @@
+video:
+  path: data/input/squat.mp4
+
+pose:
+  model: yolo26n-pose.pt
+  confidence: 0.5
+
+processing:
+  confidence_threshold: 0.5
+  smoothing_alpha: 0.4
+
+exercise:
+  name: squat

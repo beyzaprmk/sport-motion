@@ -44,14 +44,7 @@ class PoseRenderer:
         frame,
         keypoints,
     ):
-        """
-        Draw pose keypoints and skeleton.
-        """
-
-        # -------------------------
-        # Keypoints
-        # -------------------------
-
+       
         for x, y, confidence in keypoints:
 
             if confidence < self.confidence_threshold:
@@ -109,17 +102,14 @@ class AnalysisRenderer:
         kinematic_frame,
         exercise_manager,
     ):
-        """
-        Draw kinematic values and exercise analysis.
-        """
 
-        left_knee = (
-            kinematic_frame.left_knee_angle
-        )
+        left_knee = kinematic_frame.left_knee_angle
+        right_knee = kinematic_frame.right_knee_angle
 
-        right_knee = (
-            kinematic_frame.right_knee_angle
-        )
+        left_hip = kinematic_frame.left_hip_angle
+        right_hip = kinematic_frame.right_hip_angle
+
+        torso = kinematic_frame.torso_angle
 
         cv2.putText(
             frame,
@@ -143,9 +133,39 @@ class AnalysisRenderer:
 
         cv2.putText(
             frame,
+            f"Left Hip: {left_hip:.1f} deg",
+            (20, 90),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 0),
+            2,
+        )
+
+        cv2.putText(
+            frame,
+            f"Right Hip: {right_hip:.1f} deg",
+            (20, 120),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 0),
+            2,
+        )
+
+        cv2.putText(
+            frame,
+            f"Torso: {torso:.1f} deg",
+            (20, 150),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 0, 255),
+            2,
+        )
+
+        cv2.putText(
+            frame,
             f"Repetitions: "
             f"{exercise_manager.repetition_count}",
-            (20, 90),
+            (20, 180),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
             (0, 255, 0),

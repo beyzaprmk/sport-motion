@@ -1,7 +1,4 @@
-from src.exercises.base import (
-    AnalysisResult,
-    ExerciseAnalyzer,
-)
+from src.exercises.base import AnalysisResult
 from src.exercises.factory import create_exercise_analyzer
 from src.processing.kinematics import KinematicFrame
 

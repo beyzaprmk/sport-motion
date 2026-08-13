@@ -15,153 +15,32 @@ from src.pose.factory import create_pose_estimator
 from src.video.reader import VideoReader
 from src.processing.processor import PoseProcessor
 from src.processing.kinematics import KinematicCalculator
-from src.exercises.squat import SquatAnalyzer
+from src.session.manager import SessionManager
 
 
 CONFIG_PATH = "configs/config.yaml"
 
 
-# COCO 17 keypoint bağlantıları
-SKELETON = [
-    (0, 1),   # nose - left eye
-    (0, 2),   # nose - right eye
-    (1, 3),   # left eye - left ear
-    (2, 4),   # right eye - right ear
-
-    (5, 6),   # shoulders
-
-    (5, 7),   # left shoulder - left elbow
-    (7, 9),   # left elbow - left wrist
-
-    (6, 8),   # right shoulder - right elbow
-    (8, 10),  # right elbow - right wrist
-
-    (5, 11),  # left shoulder - left hip
-    (6, 12),  # right shoulder - right hip
-
-    (11, 12), # hips
-
-    (11, 13), # left hip - left knee
-    (13, 15), # left knee - left ankle
-
-    (12, 14), # right hip - right knee
-    (14, 16), # right knee - right ankle
-]
-
-
-def draw_pose(
-    frame,
-    keypoints,
-    confidence_threshold=0.5,
-):
-    
-
-    for x, y, confidence in keypoints:
-
-        if confidence < confidence_threshold:
-            continue
-
-        x = int(x)
-        y = int(y)
-
-        cv2.circle(
-            frame,
-            (x, y),
-            5,
-            (0, 255, 0),
-            -1,
-        )
-
-    # Skeleton
-  
-
-    for start_idx, end_idx in SKELETON:
-
-        start = keypoints[start_idx]
-        end = keypoints[end_idx]
-
-        if (
-            start[2] < confidence_threshold
-            or end[2] < confidence_threshold
-        ):
-            continue
-
-        start_point = (
-            int(start[0]),
-            int(start[1]),
-        )
-
-        end_point = (
-            int(end[0]),
-            int(end[1]),
-        )
-
-        cv2.line(
-            frame,
-            start_point,
-            end_point,
-            (255, 255, 255),
-            2,
-        )
-
-    return frame
-
-
-def draw_information(
-    frame,
-    kinematic_frame,
-    squat_analyzer,
-):
-    
-
-    left_knee = kinematic_frame.left_knee_angle
-    right_knee = kinematic_frame.right_knee_angle
-
-    cv2.putText(
-        frame,
-        f"Left Knee: {left_knee:.1f} deg",
-        (20, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (0, 255, 255),
-        2,
-    )
-
-    cv2.putText(
-        frame,
-        f"Right Knee: {right_knee:.1f} deg",
-        (20, 60),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (0, 255, 255),
-        2,
-    )
-
-    cv2.putText(
-        frame,
-        f"State: {squat_analyzer.state.value}",
-        (20, 90),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 0),
-        2,
-    )
-
-    cv2.putText(
-        frame,
-        f"Repetitions: {squat_analyzer.repetitions}",
-        (20, 120),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (0, 255, 0),
-        2,
-    )
-
-    return frame
-
-
 def main():
+    # -------------------------
+    # Configuration
+    # -------------------------
+
     config = load_config(CONFIG_PATH)
+
+    # -------------------------
+    # Session / Exercise
+    # -------------------------
+
+    session_manager = SessionManager()
+
+    exercise_manager = (
+        session_manager.create_exercise_manager()
+    )
+
+    # -------------------------
+    # Video
+    # -------------------------
 
     video_path = config["video"]["path"]
 
@@ -175,8 +54,10 @@ def main():
         config["pose"]
     )
 
+    # -------------------------
     # Pose Processing
-  
+    # -------------------------
+
     processing_config = config["processing"]
 
     pose_processor = PoseProcessor(
@@ -188,18 +69,15 @@ def main():
         ],
     )
 
+    # -------------------------
     # Kinematics
-  
+    # -------------------------
 
     kinematic_calculator = KinematicCalculator()
 
-   
-    # Squat Analyzer
-
-    squat_analyzer = SquatAnalyzer()
-
-
-    # Frame processing
+    # -------------------------
+    # Frame Processing
+    # -------------------------
 
     for frame_index, timestamp, frame in reader:
 
@@ -213,18 +91,20 @@ def main():
         if pose_frame is None:
             continue
 
-        # 2. Pose processing
+        # 2. Pose processing / filtering
         processed_pose = pose_processor.process(
             pose_frame
         )
 
         # 3. Kinematics
-        kinematic_frame = kinematic_calculator.calculate(
-            processed_pose
+        kinematic_frame = (
+            kinematic_calculator.calculate(
+                processed_pose
+            )
         )
 
-        # 4. Squat analysis
-        squat_analyzer.update(
+        # 4. Exercise analysis
+        exercise_manager.update(
             kinematic_frame
         )
 
@@ -232,6 +112,7 @@ def main():
         # Visualization
         # -------------------------
 
+        # Pose
         frame = draw_pose(
             frame,
             processed_pose.keypoints,
@@ -240,10 +121,11 @@ def main():
             ],
         )
 
+        # Analysis information
         frame = draw_information(
             frame,
             kinematic_frame,
-            squat_analyzer,
+            exercise_manager,
         )
 
         cv2.imshow(
@@ -251,7 +133,7 @@ def main():
             frame,
         )
 
-        # q → quit
+        # Press Q to stop
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
@@ -263,10 +145,10 @@ def main():
     cv2.destroyAllWindows()
 
     # -------------------------
-    # Final result
+    # Final Result
     # -------------------------
 
-    result = squat_analyzer.finalize()
+    result = exercise_manager.finalize()
 
     print("\n=== SportMotion ===")
     print(f"Exercise: {result.exercise}")

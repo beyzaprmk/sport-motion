@@ -15,6 +15,11 @@ class AnalysisResult:
 
 class ExerciseAnalyzer(ABC):
 
+    @property
+    @abstractmethod
+    def repetition_count(self) -> int:
+        pass
+
     @abstractmethod
     def update(
         self,

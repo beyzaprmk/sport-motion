@@ -99,7 +99,7 @@ class SquatAnalyzer(ExerciseAnalyzer):
                 self.current_rep_min_angle = None
 
                 self.state = SquatState.STANDING
-
+   
     def finalize(self) -> AnalysisResult:
 
         average_knee_angle = None
@@ -124,3 +124,7 @@ class SquatAnalyzer(ExerciseAnalyzer):
                 "rep_min_angles": self.rep_min_angles,
             },
         )
+
+    @property
+    def repetition_count(self) -> int:
+        return self.repetitions

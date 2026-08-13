@@ -25,88 +25,121 @@ CONFIG_PATH = "configs/config.yaml"
 
 
 def main():
-    config = load_config(CONFIG_PATH)
+
+    config = load_config(
+        CONFIG_PATH
+    )
 
     # -------------------------
     # Session / Exercise
     # -------------------------
 
-    session_manager = SessionManager()
+    session_manager = (
+        SessionManager()
+    )
 
     exercise_manager = (
-        session_manager.create_exercise_manager()
+        session_manager
+        .create_exercise_manager()
     )
 
     # -------------------------
     # Video
     # -------------------------
 
-    video_path = config["video"]["path"]
+    video_path = (
+        config["video"]["path"]
+    )
 
-    reader = VideoReader(video_path)
+    reader = VideoReader(
+        video_path
+    )
 
     # -------------------------
     # Pose Estimation
     # -------------------------
 
-    pose_estimator = create_pose_estimator(
-        config["pose"]
+    pose_estimator = (
+        create_pose_estimator(
+            config["pose"]
+        )
     )
 
     # -------------------------
     # Pose Processing
     # -------------------------
 
-    processing_config = config["processing"]
+    processing_config = (
+        config["processing"]
+    )
 
     pose_processor = PoseProcessor(
-        confidence_threshold=processing_config[
-            "confidence_threshold"
-        ],
-        smoothing_alpha=processing_config[
-            "smoothing_alpha"
-        ],
+        confidence_threshold=(
+            processing_config[
+                "confidence_threshold"
+            ]
+        ),
+        smoothing_alpha=(
+            processing_config[
+                "smoothing_alpha"
+            ]
+        ),
     )
 
     # -------------------------
     # Kinematics
     # -------------------------
 
-    kinematic_calculator = KinematicCalculator()
+    kinematic_calculator = (
+        KinematicCalculator()
+    )
 
     # -------------------------
     # Visualization
     # -------------------------
 
     pose_renderer = PoseRenderer(
-        confidence_threshold=processing_config[
-            "confidence_threshold"
-        ],
+        confidence_threshold=(
+            processing_config[
+                "confidence_threshold"
+            ]
+        ),
     )
 
-    analysis_renderer = AnalysisRenderer()
+    analysis_renderer = (
+        AnalysisRenderer()
+    )
 
     # -------------------------
     # Frame Processing
     # -------------------------
 
-    for frame_index, timestamp, frame in reader:
+    for (
+        frame_index,
+        timestamp,
+        frame,
+    ) in reader:
 
-        pose_frame = pose_estimator.estimate(
-            frame=frame,
-            frame_index=frame_index,
-            timestamp=timestamp,
+        pose_frame = (
+            pose_estimator.estimate(
+                frame=frame,
+                frame_index=frame_index,
+                timestamp=timestamp,
+            )
         )
 
         if pose_frame is None:
             continue
 
-        processed_pose = pose_processor.process(
-            pose_frame
+        processed_pose = (
+            pose_processor.process(
+                pose_frame
+            )
         )
 
         kinematic_frame = (
-            kinematic_calculator.calculate(
+            kinematic_calculator
+            .calculate(
                 processed_pose
             )
         )
@@ -115,17 +148,24 @@ def main():
             kinematic_frame
         )
 
+        # -------------------------
         # Visualization
+        # -------------------------
 
-        frame = pose_renderer.draw_pose(
-            frame,
-            processed_pose.keypoints,
+        frame = (
+            pose_renderer.draw_pose(
+                frame,
+                processed_pose.keypoints,
+            )
         )
 
-        frame = analysis_renderer.draw_information(
-            frame,
-            kinematic_frame,
-            exercise_manager,
+        frame = (
+            analysis_renderer
+            .draw_information(
+                frame,
+                kinematic_frame,
+                exercise_manager,
+            )
         )
 
         cv2.imshow(
@@ -133,7 +173,10 @@ def main():
             frame,
         )
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        if (
+            cv2.waitKey(1) & 0xFF
+            == ord("q")
+        ):
             break
 
     # -------------------------
@@ -141,18 +184,35 @@ def main():
     # -------------------------
 
     reader.release()
+
     cv2.destroyAllWindows()
 
     # -------------------------
     # Final Result
     # -------------------------
 
-    result = exercise_manager.finalize()
+    result = (
+        exercise_manager.finalize()
+    )
 
-    print("\n=== SportMotion ===")
-    print(f"Exercise: {result.exercise}")
-    print(f"Repetitions: {result.repetitions}")
-    print(f"Metrics: {result.metrics}")
+    print(
+        "\n=== SportMotion ==="
+    )
+
+    print(
+        f"Exercise: "
+        f"{result.exercise}"
+    )
+
+    print(
+        f"Repetitions: "
+        f"{result.repetitions}"
+    )
+
+    print(
+        f"Metrics: "
+        f"{result.metrics}"
+    )
 
 
 if __name__ == "__main__":

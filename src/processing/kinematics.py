@@ -21,8 +21,7 @@ class KinematicFrame:
 
     body_alignment_angle: float | None = None
 
-    body_center: np.ndarray | None = None
-    body_perpendicular_position: float | None = None
+    body_reference_point: np.ndarray | None = None
 
     left_hand_body_axis_distance: float | None = None
     right_hand_body_axis_distance: float | None = None
@@ -143,44 +142,34 @@ def calculate_body_alignment_angle(
     )
 
 
-def calculate_body_center(
-    shoulder_center: np.ndarray,
-    hip_center: np.ndarray,
-    ankle_center: np.ndarray,
-) -> np.ndarray:
+def calculate_confidence_weighted_point(
+    points: list[tuple[np.ndarray, float]],
+) -> np.ndarray | None:
 
-    return (
-        shoulder_center
-        + hip_center
-        + ankle_center
-    ) / 3.0
+    valid_points = [
+        (point, confidence)
+        for point, confidence in points
+        if confidence > 0
+        and np.all(np.isfinite(point))
+    ]
 
+    if not valid_points:
+        return None
 
-def calculate_body_perpendicular_position(
-    body_center: np.ndarray,
-    shoulder_center: np.ndarray,
-    ankle_center: np.ndarray,
-) -> float:
-
-    body_axis = ankle_center - shoulder_center
-
-    axis_length = np.linalg.norm(body_axis)
-
-    if axis_length == 0:
-        return float("nan")
-
-    axis = body_axis / axis_length
-
-    perpendicular = np.array(
-        [-axis[1], axis[0]]
+    total_confidence = sum(
+        confidence
+        for _, confidence in valid_points
     )
 
-    return float(
-        np.dot(
-            body_center,
-            perpendicular,
-        )
+    if total_confidence == 0:
+        return None
+
+    weighted_sum = sum(
+        point * confidence
+        for point, confidence in valid_points
     )
+
+    return weighted_sum / total_confidence
 
 
 def calculate_point_to_body_axis_distance(
@@ -189,14 +178,21 @@ def calculate_point_to_body_axis_distance(
     ankle_center: np.ndarray,
 ) -> float:
 
-    body_axis = ankle_center - shoulder_center
+    body_axis = (
+        ankle_center
+        - shoulder_center
+    )
 
-    axis_length = np.linalg.norm(body_axis)
+    axis_length = np.linalg.norm(
+        body_axis
+    )
 
     if axis_length == 0:
         return float("nan")
 
-    relative_point = point - shoulder_center
+    relative_point = (
+        point - shoulder_center
+    )
 
     cross_product = (
         body_axis[0] * relative_point[1]
@@ -217,33 +213,37 @@ class KinematicCalculator:
 
         keypoints = pose_frame.keypoints
 
+        # -------------------------
         # Lower body
+        # -------------------------
 
         left_hip = keypoints[
             Keypoint.LEFT_HIP
-        ][:2]
-
-        left_knee = keypoints[
-            Keypoint.LEFT_KNEE
-        ][:2]
-
-        left_ankle = keypoints[
-            Keypoint.LEFT_ANKLE
         ][:2]
 
         right_hip = keypoints[
             Keypoint.RIGHT_HIP
         ][:2]
 
+        left_knee = keypoints[
+            Keypoint.LEFT_KNEE
+        ][:2]
+
         right_knee = keypoints[
             Keypoint.RIGHT_KNEE
+        ][:2]
+
+        left_ankle = keypoints[
+            Keypoint.LEFT_ANKLE
         ][:2]
 
         right_ankle = keypoints[
             Keypoint.RIGHT_ANKLE
         ][:2]
 
+        # -------------------------
         # Upper body
+        # -------------------------
 
         left_shoulder = keypoints[
             Keypoint.LEFT_SHOULDER
@@ -269,24 +269,98 @@ class KinematicCalculator:
             Keypoint.RIGHT_WRIST
         ][:2]
 
-        # Centers
+        # -------------------------
+        # Confidence values
+        # -------------------------
+
+        left_hip_conf = float(
+            keypoints[
+                Keypoint.LEFT_HIP
+            ][2]
+        )
+
+        right_hip_conf = float(
+            keypoints[
+                Keypoint.RIGHT_HIP
+            ][2]
+        )
+
+        left_shoulder_conf = float(
+            keypoints[
+                Keypoint.LEFT_SHOULDER
+            ][2]
+        )
+
+        right_shoulder_conf = float(
+            keypoints[
+                Keypoint.RIGHT_SHOULDER
+            ][2]
+        )
+
+        left_ankle_conf = float(
+            keypoints[
+                Keypoint.LEFT_ANKLE
+            ][2]
+        )
+
+        right_ankle_conf = float(
+            keypoints[
+                Keypoint.RIGHT_ANKLE
+            ][2]
+        )
+
+        # -------------------------
+        # Confidence-aware centers
+        # -------------------------
 
         shoulder_center = (
-            left_shoulder
-            + right_shoulder
-        ) / 2.0
+            calculate_confidence_weighted_point(
+                [
+                    (
+                        left_shoulder,
+                        left_shoulder_conf,
+                    ),
+                    (
+                        right_shoulder,
+                        right_shoulder_conf,
+                    ),
+                ]
+            )
+        )
 
         hip_center = (
-            left_hip
-            + right_hip
-        ) / 2.0
+            calculate_confidence_weighted_point(
+                [
+                    (
+                        left_hip,
+                        left_hip_conf,
+                    ),
+                    (
+                        right_hip,
+                        right_hip_conf,
+                    ),
+                ]
+            )
+        )
 
         ankle_center = (
-            left_ankle
-            + right_ankle
-        ) / 2.0
+            calculate_confidence_weighted_point(
+                [
+                    (
+                        left_ankle,
+                        left_ankle_conf,
+                    ),
+                    (
+                        right_ankle,
+                        right_ankle_conf,
+                    ),
+                ]
+            )
+        )
 
+        # -------------------------
         # Knee angles
+        # -------------------------
 
         left_knee_angle = calculate_knee_angle(
             left_hip,
@@ -300,7 +374,9 @@ class KinematicCalculator:
             right_ankle,
         )
 
+        # -------------------------
         # Hip angles
+        # -------------------------
 
         left_hip_angle = calculate_hip_angle(
             left_shoulder,
@@ -314,8 +390,9 @@ class KinematicCalculator:
             right_knee,
         )
 
+        # -------------------------
         # Elbow angles
-        
+        # -------------------------
 
         left_elbow_angle = calculate_elbow_angle(
             left_shoulder,
@@ -329,58 +406,109 @@ class KinematicCalculator:
             right_wrist,
         )
 
+        # -------------------------
         # Torso angle
+        # -------------------------
 
-        torso_angle = calculate_torso_angle(
-            shoulder_center,
-            hip_center,
-        )
+        torso_angle = None
 
-        # Body alignment
-
-        body_alignment_angle = (
-            calculate_body_alignment_angle(
+        if (
+            shoulder_center is not None
+            and hip_center is not None
+        ):
+            torso_angle = calculate_torso_angle(
                 shoulder_center,
                 hip_center,
-                ankle_center,
             )
-        )
 
-        # Body center
+        # -------------------------
+        # Body alignment
+        # -------------------------
 
-        body_center = calculate_body_center(
-            shoulder_center,
-            hip_center,
-            ankle_center,
-        )
+        body_alignment_angle = None
 
-        # Body movement axis
-
-        body_perpendicular_position = (
-            calculate_body_perpendicular_position(
-                body_center,
-                shoulder_center,
-                ankle_center,
+        if (
+            shoulder_center is not None
+            and hip_center is not None
+            and ankle_center is not None
+        ):
+            body_alignment_angle = (
+                calculate_body_alignment_angle(
+                    shoulder_center,
+                    hip_center,
+                    ankle_center,
+                )
             )
-        )
 
-        # Hand position
+        # -------------------------
+        # Body reference point
+        #
+        # IMPORTANT:
+        # Only shoulders, hips and ankles.
+        # Elbows are NOT included.
+        # -------------------------
 
-        left_hand_body_axis_distance = (
-            calculate_point_to_body_axis_distance(
-                left_wrist,
-                shoulder_center,
-                ankle_center,
+        body_reference_point = None
+
+        if (
+            shoulder_center is not None
+            and hip_center is not None
+            and ankle_center is not None
+        ):
+            body_reference_point = (
+                calculate_confidence_weighted_point(
+                    [
+                        (
+                            shoulder_center,
+                            (
+                                left_shoulder_conf
+                                + right_shoulder_conf
+                            ) / 2.0,
+                        ),
+                        (
+                            hip_center,
+                            (
+                                left_hip_conf
+                                + right_hip_conf
+                            ) / 2.0,
+                        ),
+                        (
+                            ankle_center,
+                            (
+                                left_ankle_conf
+                                + right_ankle_conf
+                            ) / 2.0,
+                        ),
+                    ]
+                )
             )
-        )
 
-        right_hand_body_axis_distance = (
-            calculate_point_to_body_axis_distance(
-                right_wrist,
-                shoulder_center,
-                ankle_center,
+        # -------------------------
+        # Hand / body-axis relation
+        # -------------------------
+
+        left_hand_body_axis_distance = None
+        right_hand_body_axis_distance = None
+
+        if (
+            shoulder_center is not None
+            and ankle_center is not None
+        ):
+            left_hand_body_axis_distance = (
+                calculate_point_to_body_axis_distance(
+                    left_wrist,
+                    shoulder_center,
+                    ankle_center,
+                )
             )
-        )
+
+            right_hand_body_axis_distance = (
+                calculate_point_to_body_axis_distance(
+                    right_wrist,
+                    shoulder_center,
+                    ankle_center,
+                )
+            )
 
         return KinematicFrame(
             left_knee_angle=left_knee_angle,
@@ -398,10 +526,8 @@ class KinematicCalculator:
                 body_alignment_angle
             ),
 
-            body_center=body_center,
-
-            body_perpendicular_position=(
-                body_perpendicular_position
+            body_reference_point=(
+                body_reference_point
             ),
 
             left_hand_body_axis_distance=(

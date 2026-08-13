@@ -1,7 +1,6 @@
 import cv2
 
 
-# COCO 17 keypoint bağlantıları
 SKELETON = [
     (0, 1),
     (0, 2),
@@ -44,10 +43,11 @@ class PoseRenderer:
         frame,
         keypoints,
     ):
-       
         for x, y, confidence in keypoints:
 
-            if confidence < self.confidence_threshold:
+            if confidence < (
+                self.confidence_threshold
+            ):
                 continue
 
             cv2.circle(
@@ -58,18 +58,16 @@ class PoseRenderer:
                 -1,
             )
 
-        # -------------------------
-        # Skeleton
-        # -------------------------
-
         for start_idx, end_idx in SKELETON:
 
             start = keypoints[start_idx]
             end = keypoints[end_idx]
 
             if (
-                start[2] < self.confidence_threshold
-                or end[2] < self.confidence_threshold
+                start[2]
+                < self.confidence_threshold
+                or end[2]
+                < self.confidence_threshold
             ):
                 continue
 
@@ -103,69 +101,193 @@ class AnalysisRenderer:
         exercise_manager,
     ):
 
-        left_knee = kinematic_frame.left_knee_angle
-        right_knee = kinematic_frame.right_knee_angle
+        # Common kinematics
+       
 
-        left_hip = kinematic_frame.left_hip_angle
-        right_hip = kinematic_frame.right_hip_angle
+        if (
+            kinematic_frame.left_knee_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Left Knee: "
+                    f"{kinematic_frame.left_knee_angle:.1f}"
+                ),
+                (20, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2,
+            )
 
-        torso = kinematic_frame.torso_angle
+        if (
+            kinematic_frame.right_knee_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Right Knee: "
+                    f"{kinematic_frame.right_knee_angle:.1f}"
+                ),
+                (20, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2,
+            )
 
+        if (
+            kinematic_frame.left_hip_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Left Hip: "
+                    f"{kinematic_frame.left_hip_angle:.1f}"
+                ),
+                (20, 90),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 0),
+                2,
+            )
+
+        if (
+            kinematic_frame.right_hip_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Right Hip: "
+                    f"{kinematic_frame.right_hip_angle:.1f}"
+                ),
+                (20, 120),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 0),
+                2,
+            )
+
+        if (
+            kinematic_frame.torso_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Torso: "
+                    f"{kinematic_frame.torso_angle:.1f}"
+                ),
+                (20, 150),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 0, 255),
+                2,
+            )
+
+
+        # Push-up kinematics
+      
+
+        if (
+            kinematic_frame.left_elbow_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Left Elbow: "
+                    f"{kinematic_frame.left_elbow_angle:.1f}"
+                ),
+                (20, 180),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+            )
+
+        if (
+            kinematic_frame.right_elbow_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Right Elbow: "
+                    f"{kinematic_frame.right_elbow_angle:.1f}"
+                ),
+                (20, 210),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+            )
+
+        if (
+            kinematic_frame.body_alignment_angle
+            is not None
+        ):
+            cv2.putText(
+                frame,
+                (
+                    "Body Alignment: "
+                    f"{kinematic_frame.body_alignment_angle:.1f}"
+                ),
+                (20, 240),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+            )
+
+        if (
+            kinematic_frame.body_reference_point
+            is not None
+        ):
+            body_y = (
+                kinematic_frame
+                .body_reference_point[1]
+            )
+
+            cv2.putText(
+                frame,
+                (
+                    "Body Y: "
+                    f"{body_y:.1f}"
+                ),
+                (20, 270),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+            )
+
+        # Exercise state
+        
         cv2.putText(
             frame,
-            f"Left Knee: {left_knee:.1f} deg",
-            (20, 30),
+            (
+                "State: "
+                f"{exercise_manager.state}"
+            ),
+            (20, 300),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
-            (0, 255, 255),
+            (255, 255, 255),
             2,
         )
 
         cv2.putText(
             frame,
-            f"Right Knee: {right_knee:.1f} deg",
-            (20, 60),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 255),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            f"Left Hip: {left_hip:.1f} deg",
-            (20, 90),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 255, 0),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            f"Right Hip: {right_hip:.1f} deg",
-            (20, 120),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 255, 0),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            f"Torso: {torso:.1f} deg",
-            (20, 150),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 0, 255),
-            2,
-        )
-
-        cv2.putText(
-            frame,
-            f"Repetitions: "
-            f"{exercise_manager.repetition_count}",
-            (20, 180),
+            (
+                "Repetitions: "
+                f"{exercise_manager.repetition_count}"
+            ),
+            (20, 330),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
             (0, 255, 0),

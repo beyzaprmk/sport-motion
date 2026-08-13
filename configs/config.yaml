@@ -1,5 +1,5 @@
 video:
-  path: data/input/squat.mp4
+  path: data/input/squat-1.mp4
 
 pose:
   backend: ultralytics

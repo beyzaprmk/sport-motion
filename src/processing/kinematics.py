@@ -5,6 +5,7 @@ import numpy as np
 
 from src.pose.base import Keypoint, PoseFrame
 
+
 @dataclass
 class KinematicFrame:
     left_knee_angle: float | None = None
@@ -47,6 +48,7 @@ def calculate_knee_angle(
     knee: np.ndarray,
     ankle: np.ndarray,
 ) -> float:
+    
 
     return calculate_angle(
         hip,
@@ -60,11 +62,50 @@ def calculate_hip_angle(
     hip: np.ndarray,
     knee: np.ndarray,
 ) -> float:
-   
+    
+
     return calculate_angle(
         shoulder,
         hip,
         knee,
+    )
+
+
+def calculate_torso_angle(
+    shoulder: np.ndarray,
+    hip: np.ndarray,
+) -> float:
+    
+    torso_vector = shoulder - hip
+
+    vertical_vector = np.array(
+        [0.0, -1.0]
+    )
+
+    denominator = (
+        np.linalg.norm(torso_vector)
+        * np.linalg.norm(vertical_vector)
+    )
+
+    if denominator == 0:
+        return float("nan")
+
+    cosine = (
+        np.dot(
+            torso_vector,
+            vertical_vector,
+        )
+        / denominator
+    )
+
+    cosine = np.clip(
+        cosine,
+        -1.0,
+        1.0,
+    )
+
+    return degrees(
+        np.arccos(cosine)
     )
 
 
@@ -77,13 +118,29 @@ class KinematicCalculator:
 
         keypoints = pose_frame.keypoints
 
-        left_hip = keypoints[Keypoint.LEFT_HIP][:2]
-        left_knee = keypoints[Keypoint.LEFT_KNEE][:2]
-        left_ankle = keypoints[Keypoint.LEFT_ANKLE][:2]
+        left_hip = keypoints[
+            Keypoint.LEFT_HIP
+        ][:2]
 
-        right_hip = keypoints[Keypoint.RIGHT_HIP][:2]
-        right_knee = keypoints[Keypoint.RIGHT_KNEE][:2]
-        right_ankle = keypoints[Keypoint.RIGHT_ANKLE][:2]
+        left_knee = keypoints[
+            Keypoint.LEFT_KNEE
+        ][:2]
+
+        left_ankle = keypoints[
+            Keypoint.LEFT_ANKLE
+        ][:2]
+
+        right_hip = keypoints[
+            Keypoint.RIGHT_HIP
+        ][:2]
+
+        right_knee = keypoints[
+            Keypoint.RIGHT_KNEE
+        ][:2]
+
+        right_ankle = keypoints[
+            Keypoint.RIGHT_ANKLE
+        ][:2]
 
         left_shoulder = keypoints[
             Keypoint.LEFT_SHOULDER
@@ -92,6 +149,9 @@ class KinematicCalculator:
         right_shoulder = keypoints[
             Keypoint.RIGHT_SHOULDER
         ][:2]
+
+       
+       
 
         left_knee_angle = calculate_knee_angle(
             left_hip,
@@ -105,6 +165,7 @@ class KinematicCalculator:
             right_ankle,
         )
 
+
         left_hip_angle = calculate_hip_angle(
             left_shoulder,
             left_hip,
@@ -117,9 +178,27 @@ class KinematicCalculator:
             right_knee,
         )
 
+        
+        # Torso angle
+      
+
+        torso_vector = (
+            left_shoulder + right_shoulder
+        ) / 2.0
+
+        hip_center = (
+            left_hip + right_hip
+        ) / 2.0
+
+        torso_angle = calculate_torso_angle(
+            torso_vector,
+            hip_center,
+        )
+
         return KinematicFrame(
             left_knee_angle=left_knee_angle,
             right_knee_angle=right_knee_angle,
             left_hip_angle=left_hip_angle,
             right_hip_angle=right_hip_angle,
+            torso_angle=torso_angle,
         )

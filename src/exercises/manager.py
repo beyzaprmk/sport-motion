@@ -26,3 +26,7 @@ class ExerciseManager:
     @property
     def repetition_count(self) -> int:
         return self.analyzer.repetition_count
+
+    @property
+    def state(self) -> str:
+        return self.analyzer.state.value

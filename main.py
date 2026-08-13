@@ -3,7 +3,6 @@ from pathlib import Path
 
 import cv2
 
-# Projenin kök dizinini (src'nin bir üst klasörü) sys.path'e ekler
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
 if str(ROOT_DIR) not in sys.path:
@@ -16,16 +15,16 @@ from src.video.reader import VideoReader
 from src.processing.processor import PoseProcessor
 from src.processing.kinematics import KinematicCalculator
 from src.session.manager import SessionManager
+from src.visualization.renderer import (
+    PoseRenderer,
+    AnalysisRenderer,
+)
 
 
 CONFIG_PATH = "configs/config.yaml"
 
 
 def main():
-    # -------------------------
-    # Configuration
-    # -------------------------
-
     config = load_config(CONFIG_PATH)
 
     # -------------------------
@@ -76,12 +75,23 @@ def main():
     kinematic_calculator = KinematicCalculator()
 
     # -------------------------
+    # Visualization
+    # -------------------------
+
+    pose_renderer = PoseRenderer(
+        confidence_threshold=processing_config[
+            "confidence_threshold"
+        ],
+    )
+
+    analysis_renderer = AnalysisRenderer()
+
+    # -------------------------
     # Frame Processing
     # -------------------------
 
     for frame_index, timestamp, frame in reader:
 
-        # 1. Pose estimation
         pose_frame = pose_estimator.estimate(
             frame=frame,
             frame_index=frame_index,
@@ -91,38 +101,28 @@ def main():
         if pose_frame is None:
             continue
 
-        # 2. Pose processing / filtering
         processed_pose = pose_processor.process(
             pose_frame
         )
 
-        # 3. Kinematics
         kinematic_frame = (
             kinematic_calculator.calculate(
                 processed_pose
             )
         )
 
-        # 4. Exercise analysis
         exercise_manager.update(
             kinematic_frame
         )
 
-        # -------------------------
         # Visualization
-        # -------------------------
 
-        # Pose
-        frame = draw_pose(
+        frame = pose_renderer.draw_pose(
             frame,
             processed_pose.keypoints,
-            confidence_threshold=processing_config[
-                "confidence_threshold"
-            ],
         )
 
-        # Analysis information
-        frame = draw_information(
+        frame = analysis_renderer.draw_information(
             frame,
             kinematic_frame,
             exercise_manager,
@@ -133,7 +133,6 @@ def main():
             frame,
         )
 
-        # Press Q to stop
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 

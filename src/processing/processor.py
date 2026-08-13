@@ -1,6 +1,7 @@
 import numpy as np
 
 from src.pose.base import PoseFrame
+from src.processing.filtering import exponential_smoothing
 
 
 class PoseProcessor:
@@ -15,7 +16,10 @@ class PoseProcessor:
 
         self.previous_keypoints: np.ndarray | None = None
 
-    def process(self, pose_frame: PoseFrame) -> PoseFrame:
+    def process(
+        self,
+        pose_frame: PoseFrame,
+    ) -> PoseFrame:
 
         keypoints = pose_frame.keypoints.copy()
 
@@ -31,12 +35,15 @@ class PoseProcessor:
                 self.previous_keypoints[low_confidence]
             )
 
-            alpha = self.smoothing_alpha
+            current_coordinates = keypoints[:, :2]
+            previous_coordinates = (
+                self.previous_keypoints[:, :2]
+            )
 
-            keypoints[:, :2] = (
-                alpha * keypoints[:, :2]
-                + (1 - alpha)
-                * self.previous_keypoints[:, :2]
+            keypoints[:, :2] = exponential_smoothing(
+                current=current_coordinates,
+                previous=previous_coordinates,
+                alpha=self.smoothing_alpha,
             )
 
         self.previous_keypoints = keypoints.copy()
